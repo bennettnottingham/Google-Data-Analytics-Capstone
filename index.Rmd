@@ -1,0 +1,265 @@
+---
+title: "Google Data Analytics Capstone"
+output:
+  html_document
+date: "2023-08-17"
+---
+
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(cluster)
+library(factoextra)
+
+install.packages("tidyr")
+install.packages("factoextra")
+
+knitr::opts_chunk$set(fig.width = 10, fig.height = 10)  # Adjust the width as needed
+```
+
+```{r}
+# Load libraries
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(cluster)
+library(factoextra)
+
+# Load in data
+cb_rankings_cleaned <- read.csv("C:/Users/benne/OneDrive/Desktop/ISTA498 Capstone/cb_rankings_cleaned.csv")
+
+# Calculate total points for each team
+total_points <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Total_Points = sum(Points))
+
+# Find the team with the most points
+most_points_team <- total_points %>%
+  filter(Total_Points == max(Total_Points))
+
+# Print the team with the most points
+cat("Team with the most points:", most_points_team$Team, "\n")
+cat("Total points:", most_points_team$Total_Points, "\n")
+
+# Calculate the number of times the most points team was in the top 25
+top25_count <- cb_rankings_cleaned %>%
+  filter(Team == most_points_team$Team, Rank <= 25) %>%
+  summarize(Top25_Count = n_distinct(Year))
+
+# Print the number of times the most points team was in the top 25
+cat("Top 25 appearances:", top25_count$Top25_Count, "times\n")
+
+# Calculate total wins and losses for each team
+total_wins_losses <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Total_Wins = sum(W), Total_Losses = sum(L))
+
+most_wins_team <- total_wins_losses %>%
+  filter(Total_Wins == max(Total_Wins))
+most_losses_team <- total_wins_losses %>%
+  filter(Total_Losses == max(Total_Losses))
+
+# Print the team with the most wins and most losses
+cat("Team with the most wins:", most_wins_team$Team, "\n")
+cat("Total wins:", most_wins_team$Total_Wins, "\n")
+
+cat("\nTeam with the most losses:", most_losses_team$Team, "\n")
+cat("Total losses:", most_losses_team$Total_Losses, "\n")
+
+# Calculate win percentage and top 25 appearances for each team
+team_summary <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Total_Wins = sum(W), Total_Games = sum(W + L),
+            Top25_Appearances = sum(Rank <= 25),
+            Win_Percentage = Total_Wins / Total_Games * 100) %>%
+  arrange(desc(Win_Percentage))
+
+# Print the top 5 teams with the highest win percentage
+cat("Top 5 teams with the highest win percentage:\n")
+print(team_summary$Team[1:5])
+
+# Plot bar graph for top 5 teams' win percentage and top 25 appearances
+top5_team_summary <- team_summary %>%
+  head(5)
+
+ggplot(top5_team_summary, aes(x = reorder(Team, -Win_Percentage), y = Win_Percentage)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = paste("Top 25:", Top25_Appearances)), vjust = -0.5, size = 3, color = "black") +
+  labs(x = "Team", y = "Win Percentage", title = "Top 5 Teams with Highest Win Percentage and Top 25 Appearances") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# As you can see the results are skewed for win percentage because they were only present 1 time
+# Lets filter it to see what the win percentage is of teams present more than 1 time in the top25
+
+# Calculate win percentage and top 25 appearances for each team
+team_summary <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Total_Wins = sum(W), Total_Games = sum(W + L),
+            Top25_Appearances = sum(Rank <= 25),
+            Win_Percentage = Total_Wins / Total_Games * 100) %>%
+  filter(Top25_Appearances >= 2) %>%  # Filter teams with at least 2 top 25 appearances
+  arrange(desc(Win_Percentage))
+
+# Print the top 5 teams with the highest win percentage and at least 2 top 25 appearances
+cat("Top 5 teams with the highest win percentage and at least 2 top 25 appearances:\n")
+print(team_summary$Team[1:5])
+
+# Plot bar graph for top 5 teams' win percentage and top 25 appearances
+top5_team_summary <- team_summary %>%
+  head(5)
+
+ggplot(top5_team_summary, aes(x = reorder(Team, -Win_Percentage), y = Win_Percentage)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = paste("Top 25:", Top25_Appearances)), vjust = -0.5, size = 3, color = "black") +
+  labs(x = "Team", y = "Win Percentage", title = "Top 5 Teams with Highest Win Percentage and at Least 2 Top 25 Appearances") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Gonzaga has the highest win percentage then
+
+###########################################################
+
+# Data manipulation to calculate consistency metrics
+consistency_metrics <- cb_rankings_cleaned %>%
+  filter(Year >= max(Year) - 4) %>%
+  group_by(Team) %>%
+  summarize(
+    Top_10_Count = sum(Rank <= 10),
+    Top_5_Count = sum(Rank <= 5),
+    Ranked_First_Count = sum(Rank == 1)
+  ) %>%
+  arrange(desc(Top_10_Count))
+
+# Reshape the data to long format for stacked bar plot
+consistency_metrics_long <- consistency_metrics %>%
+  pivot_longer(cols = c(Top_10_Count, Top_5_Count, Ranked_First_Count),
+               names_to = "Metric", values_to = "Count")
+
+# Manually reorder the levels of the "Metric" variable
+consistency_metrics_long$Metric <- factor(consistency_metrics_long$Metric,
+                                          levels = c("Top_10_Count", "Top_5_Count", "Ranked_First_Count"))
+
+# Stacked bar plot for consistency metrics
+ggplot(consistency_metrics_long, aes(x = Team, y = Count, fill = Metric)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Team", y = "Count",
+       title = "Consistency Metrics: Last 5 Years",
+       fill = "Metric") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+
+# Plot ranking trends using faceted line charts without colors and legend
+ggplot(cb_rankings_cleaned, aes(x = Year, y = Rank)) +
+  geom_line(alpha = 0.8) +
+  geom_point(size = 2) +
+  labs(x = "Year", y = "Rank", title = "Ranking Trends: Team Performance Over Time") +
+  theme_minimal() +
+  theme(legend.position = "none") +  # Remove legend
+  facet_wrap(~ Team, scales = "free_y", ncol = 6)
+
+# Calculate the average rank for each team over the 6 years
+average_rank <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Avg_Rank = mean(Rank))
+
+# Sort teams by average rank
+sorted_teams <- average_rank %>%
+  arrange(Avg_Rank)
+
+# Plot average rank of teams over the 6 years
+ggplot(sorted_teams, aes(x = reorder(Team, Avg_Rank), y = Avg_Rank)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Team", y = "Average Rank", title = "Average Rank of Teams Over 5 Years") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# This shows the average rank of teams over the last 6 years
+# Lets filter to make sure it takes teams who have been present in the top 25 for at least 3 years
+
+# Calculate the average rank for teams present in top 25 for at least 3 years
+average_rank <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  filter(sum(Rank <= 25) >= 3) %>%  # Filter teams with at least 3 years in top 25
+  summarize(Avg_Rank = mean(Rank))
+
+# Sort teams by average rank
+sorted_teams <- average_rank %>%
+  arrange(Avg_Rank)
+
+# Plot average rank of selected teams
+ggplot(sorted_teams, aes(x = reorder(Team, Avg_Rank), y = Avg_Rank)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Team", y = "Average Rank", title = "Average Rank of Teams (Top 25 for at least 3 Years)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Gonzaga has had the lowest average rank over the last 6 years
+
+# Calculate the change in rank for each team
+rank_changes <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Initial_Rank = first(Rank), Final_Rank = last(Rank)) %>%
+  mutate(Rank_Change = Final_Rank - Initial_Rank)
+
+# Print teams that have improved the most
+cat("Teams that have improved the most:\n")
+improved_teams <- rank_changes %>%
+  filter(Rank_Change < 0) %>%
+  arrange(Rank_Change)
+print(improved_teams$Team)
+
+# Print teams that haven't performed well
+cat("\nTeams that haven't performed well:\n")
+declined_teams <- rank_changes %>%
+  filter(Rank_Change > 0) %>%
+  arrange(Rank_Change)
+print(declined_teams$Team)
+
+###########################################################
+
+# Prepare the data for clustering
+team_clustering <- cb_rankings_cleaned %>%
+  group_by(Team) %>%
+  summarize(Total_Wins = sum(W), Total_Losses = sum(L),
+            Top25_Appearances = sum(Rank <= 25),
+            Win_Percentage = Total_Wins / (Total_Wins + Total_Losses) * 100)
+
+# Select the relevant columns for clustering
+team_features <- select(team_clustering, Win_Percentage, Total_Wins, Total_Losses, Top25_Appearances)
+
+# Perform hierarchical clustering
+hclust_result <- hclust(dist(team_features), method = "ward.D2")
+
+# Plot a dendrogram to visualize the clusters
+plot(hclust_result, hang = -1)
+
+# Determine the number of clusters (using the "elbow" method)
+fviz_nbclust(team_features, hcut, method = "wss")
+
+# Perform k-means clustering with the chosen number of clusters
+num_clusters <- 3  # Adjust as needed based on the elbow plot
+kmeans_result <- kmeans(team_features, centers = num_clusters, nstart = 25)
+
+# Add cluster labels to the data
+team_clustering$Cluster <- kmeans_result$cluster
+
+# Visualize the clustering results
+fviz_cluster(kmeans_result, data = team_features, geom = "point",
+             palette = c("#1B9E77", "#D95F02", "#7570B3"))
+
+# Print the teams in each cluster
+for (cluster_id in unique(kmeans_result$cluster)) {
+  cat("Cluster", cluster_id, ":\n")
+  print(team_clustering$Team[team_clustering$Cluster == cluster_id])
+  cat("\n")
+}
+
+```  
+
