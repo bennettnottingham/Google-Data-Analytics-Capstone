@@ -48,10 +48,6 @@ It looks like you have posted the output of the clustering analysis, showing the
 - Some teams may have had fluctuations in their performance over the years.
 - Teams in this cluster include BYU, Cincinnati, Clemson, Indiana, LSU, Seton Hall, UConn, Virginia Tech, and more.
 
-Please note that the interpretation is based on the general patterns observed in the clusters. The specific characteristics and reasons for grouping teams may vary based on the features you used for clustering and the underlying dynamics of college basketball performance.
-
-As you continue to explore and analyze the data, you can delve deeper into each cluster's performance metrics, compare them, and identify any trends or insights that emerge from the clustering analysis.
-
 **Project Outcomes and Impact:**
 
 Through this project, I not only showcased my proficiency in web scraping, data cleaning, and exploratory data analysis but also demonstrated an ability to extract meaningful insights from complex datasets. By combining Python's web scraping capabilities with R's powerful analytical libraries, I was able to create a comprehensive analysis that holds practical implications for sports marketing and management strategies.
