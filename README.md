@@ -28,8 +28,6 @@ In this Google Data Analytics Capstone project, I utilized the skills acquired t
 
 Cluster Explanation
 
-It looks like you have posted the output of the clustering analysis, showing the teams that are assigned to each cluster. Each cluster contains a list of team names that are grouped together based on their performance metrics. Here's how you can interpret the clusters based on the provided output:
-
 **Cluster 1:**
 - This cluster includes teams with strong overall performance metrics.
 - Teams in this cluster have high win percentages, indicating consistent success.
